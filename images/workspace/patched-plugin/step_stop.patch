@@ -1,0 +1,79 @@
+diff --git a/builder/kubevirt/iso/resources.go b/builder/kubevirt/iso/resources.go
+index 2601d9f..ff43a8e 100644
+--- a/builder/kubevirt/iso/resources.go
++++ b/builder/kubevirt/iso/resources.go
+@@ -19,6 +19,13 @@ import (
+ 
+ const immediateBindingAnnotation = "cdi.kubevirt.io/storage.bind.immediate.requested"
+ 
++// forceHostAssistedClone makes CDI copy the rootdisk byte-for-byte (host-assisted
++// copy) instead of a CSI smart-clone. On dev9's LINSTOR/ZFS backend the CSI
++// smart-clone reported the golden DataVolume Succeeded while leaving the target
++// PVC empty (no disk.img) — a silent false-success. A copy clone either populates
++// the target or fails loudly.
++const cloneTypeAnnotation = "cdi.kubevirt.io/cloneType"
++
+ func configMap(name string, mediaFiles []string) (*corev1.ConfigMap, error) {
+ 	data := make(map[string]string)
+ 
+@@ -142,6 +149,7 @@ func cloneVolume(name, namespace, diskSize string) *cdiv1.DataVolume {
+ 			Name: name,
+ 			Annotations: map[string]string{
+ 				immediateBindingAnnotation: "true",
++				cloneTypeAnnotation:        "copy",
+ 			},
+ 		},
+ 		Spec: cdiv1.DataVolumeSpec{
+diff --git a/builder/kubevirt/iso/step_stop_virtualmachine.go b/builder/kubevirt/iso/step_stop_virtualmachine.go
+index 0148f5f..f690917 100644
+--- a/builder/kubevirt/iso/step_stop_virtualmachine.go
++++ b/builder/kubevirt/iso/step_stop_virtualmachine.go
+@@ -5,6 +5,7 @@ package iso
+ 
+ import (
+ 	"context"
++	"time"
+ 
+ 	"github.com/hashicorp/packer-plugin-sdk/multistep"
+ 	"github.com/hashicorp/packer-plugin-sdk/packer"
+@@ -14,6 +15,8 @@ import (
+ 
+ 	v1 "kubevirt.io/api/core/v1"
+ 	"kubevirt.io/client-go/kubecli"
++
++	"k8s.io/client-go/util/retry"
+ )
+ 
+ type StepStopVirtualMachine struct {
+@@ -28,16 +31,21 @@ func (s *StepStopVirtualMachine) Run(ctx context.Context, state multistep.StateB
+ 
+ 	ui.Sayf("Stopping the temporary VirtualMachine (%s/%s)...", namespace, name)
+ 
+-	vm, err := s.Client.VirtualMachine(namespace).Get(ctx, name, metav1.GetOptions{})
+-	if err != nil {
+-		ui.Error(err.Error())
+-		return multistep.ActionHalt
+-	}
+-	vm.Spec.RunStrategy = ptr.To(v1.RunStrategyHalted)
+-
+-	_, err = s.Client.VirtualMachine(vm.Namespace).Update(ctx, vm, metav1.UpdateOptions{})
+-	if err != nil {
+-		ui.Error(err.Error())
++	// Give an async in-guest sysprep /generalize time to finish before we stop the VM.
++	ui.Say("Waiting 4m for in-guest sysprep /generalize to complete...")
++	time.Sleep(4 * time.Minute)
++
++	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
++		vm, err := s.Client.VirtualMachine(namespace).Get(ctx, name, metav1.GetOptions{})
++		if err != nil {
++			return err
++		}
++		vm.Spec.RunStrategy = ptr.To(v1.RunStrategyHalted)
++		_, err = s.Client.VirtualMachine(vm.Namespace).Update(ctx, vm, metav1.UpdateOptions{})
++		return err
++	})
++	if retryErr != nil {
++		ui.Error(retryErr.Error())
+ 		return multistep.ActionHalt
+ 	}
+ 	return multistep.ActionContinue
