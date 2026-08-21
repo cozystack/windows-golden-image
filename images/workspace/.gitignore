@@ -1,0 +1,11 @@
+# Never commit build secrets / variable values
+*.pkrvars.hcl
+*.auto.pkrvars.hcl
+
+# Large / vendored artefacts — fetch or build locally
+patched-plugin/packer-plugin-kubevirt*
+Workspace-installer.exe
+*.iso
+*.img
+out/
+crash.log
