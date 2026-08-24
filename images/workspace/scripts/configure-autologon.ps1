@@ -1,8 +1,8 @@
-# Persistent interactive desktop session (brief question 2 — MANDATORY).
-# DFO / Excel COM automation deadlocks in Session 0 / headless. This bakes an
-# autologon so each boot brings up a real logged-in interactive Session 1 desktop
-# for the Airflow Edge Worker + win32com to drive DFO in. Verified on a clone:
-# after reboot `quser` shows administrator/console/Active and explorer.exe is up.
+# Optional: persistent interactive desktop session. Some GUI apps and COM
+# automation deadlock in Session 0 / headless, so this bakes an autologon that
+# brings up a real logged-in interactive Session 1 desktop on each boot. Verified
+# on a clone: after reboot `quser` shows administrator/console/Active and
+# explorer.exe is up. Drop this provisioner from the build if you do not need it.
 #
 # SECURITY NOTE: this stores DefaultPassword in the registry in cleartext. For
 # production prefer Sysinternals Autologon.exe (stores it as an encrypted LSA

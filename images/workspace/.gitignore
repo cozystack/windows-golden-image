@@ -2,9 +2,8 @@
 *.pkrvars.hcl
 *.auto.pkrvars.hcl
 
-# Large / vendored artefacts — fetch or build locally
-patched-plugin/packer-plugin-kubevirt*
-Workspace-installer.exe
+# Large artefacts — fetch or build locally
+*.exe
 *.iso
 *.img
 out/

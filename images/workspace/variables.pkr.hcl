@@ -13,7 +13,7 @@ variable "namespace" {
 
 variable "image_name" {
   type        = string
-  default     = "workspace-win2022"
+  default     = "windows-golden"
   description = "Name of the resulting golden image / VM."
 }
 

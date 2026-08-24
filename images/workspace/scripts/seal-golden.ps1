@@ -1,5 +1,5 @@
 # Seal the golden with sysprep so clones boot to a ready desktop with a fresh SID
-# and a unique name. MUST run last (after Office/DFO/config are baked).
+# and a unique name. MUST run last (after your software + config are baked).
 #
 # Root-cause fix baked in: the original build answer file left at
 # C:\Windows\Panther\unattend.xml has offlineServicing DriverPaths pointing at the
@@ -18,6 +18,5 @@ Start-Process -FilePath "$env:SystemRoot\System32\Sysprep\Sysprep.exe" `
   -ArgumentList '/generalize','/oobe','/quit','/unattend:C:\ODT\oobe-unattend.xml'
 
 Write-Output "sysprep /generalize /oobe fired with baked oobe answer"
-# NOTE: the patched plugin sleeps before stopping the VM (see patched-plugin/). A
-# clean /generalize may take longer than the current 4m; verify Sysprep_succeeded.tag
-# appears (or bump the plugin sleep) during the real rebuild.
+# NOTE: a clean /generalize can take a while; verify Sysprep_succeeded.tag
+# appears before the VM is stopped and captured.
